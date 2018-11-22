@@ -1,0 +1,20 @@
+{
+  "name": "cupcake-wordsearch-generator",
+  "version": "1.0.0",
+  "description": "Tool to generate wordsearch puzzles",
+  "main": "index.js",
+  "license": "MIT",
+  "private": true,
+  "dependencies": {
+    "posix-getopt": "^1.2.0",
+    "ramda": "^0.26.0"
+  },
+  "scripts": {
+    "css" : "sass --watch browser/style.scss browser/style.css",
+    "start": "serve -s browser/",
+    "test": "npm uninstall -g cupcake-wordsearch-generator && npm install -g file:./"
+  },
+  "bin": {
+    "wordsearch": "./index.js"
+  }
+}
