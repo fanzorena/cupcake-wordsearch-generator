@@ -13,11 +13,12 @@ function usage() {
         '',
         'options:',
         '  -b, --backwards    generate words backwards',
-        '  -c, --count        quantity of words to include in the puzzle from the file',
-        '  -d, --dimensions   the dimensions of the puzzle, ex `-d 20`, `-d 10x8`, defaults to `20x20`',
-        '  -f, --file         a newline separated list of words to use, defaults to stdin',
+        '  -c, --count        *required* quantity of words to include in the puzzle from the file',
+        '  -d, --dimensions   *required* the dimensions of the puzzle, ex `-d 20`, `-d 10x8`',
+        '  -f, --file         *required* a line separated list of words to use',
         '  -h, --help         print this message and exit',
         '  -r, --rules        rules file for selecting the words to include in the puzzle',
+        '  -s, --solve        add solution to the json'
     ].join('\n');
 }
 
@@ -30,7 +31,6 @@ function shuffleArray(array) {
 
 function parseDimensions(dimensions) {
     const grid = dimensions.toString().split('x');
-    console.log(grid);
     if (grid.length < 2) grid.push(grid[0]);
     return grid;
 }
@@ -38,10 +38,7 @@ function parseDimensions(dimensions) {
 function parseFile(file, count, dimensions, rules) {
     const maxLength = Math.min(dimensions[0], dimensions[1]);
     let words = fs.readFileSync(file, 'utf-8').split('\r\n');
-    console.log('Words loaded: ', words.length);
     words = R.filter((w) => w.length <= maxLength, words);
-    console.log('Words that fit board: ', words.length);
-    console.log('Words to put on board', count);
     if (!R.isNil(rules)) {
         let set = [];
         const json = JSON.parse(fs.readFileSync(rules, 'utf-8'));
@@ -49,7 +46,6 @@ function parseFile(file, count, dimensions, rules) {
             let subset = R.filter((w) => w.length === r.size, words);
             shuffleArray(subset)
             set = R.concat(set, R.slice(0, r.count, subset));
-            console.log('Rule: size ', r.size, ' count ', r.count, ' words ', set.join(','));
         });
         if (set.length < count) {
             words = R.difference(words, set);
@@ -68,26 +64,38 @@ const options = [
     'd:(dimensions)',
     'f:(file)',
     'h(help)',
-    'r:(rules)'
+    'r:(rules)',
+    's(solve)'
   ].join('');
 const parser = new getopt.BasicParser(options, process.argv);
 
 let backwards = false;
+let solve = false;
 let count = 0;
 let dimensions = [];
 let file;
 let rules;
+let addedArgs = [];
 
 while ((option = parser.getopt()) !== undefined) {
+    addedArgs.push(option.option);
     switch (option.option) {
         case 'b': backwards = true; break;
         case 'c': count = option.optarg; break;
         case 'd': dimensions = parseDimensions(option.optarg); break;
         case 'f': file = option.optarg; break;
         case 'r': rules = option.optarg; break;
+        case 's': solve = true; break;
         case 'h': console.log(usage()); process.exit(0); break;
         default: console.error(usage()); process.exit(1); break;
     }
+}
+
+addedArgs = addedArgs.filter((o) => o === 'f' || o === 'd' || o === 'c');
+if (addedArgs.length < 3) {
+    console.error('Error: Required arguments missing');
+    console.log(usage());
+    process.exit(1);
 }
 
 const orientations = ['horizontal','vertical','diagonal','diagonalBack','diagonalUp'];
@@ -100,6 +108,11 @@ const puzzle = WordFind.newPuzzle(words, {
     fillBlanks: true,
     orientations: (backwards) ? reverseOrientations : orientations
 });
-const solve = WordFind.solve(puzzle, words);
-const json = {width: dimensions[0], height: dimensions[1], words: words, grid: puzzle, solution: solve.found}
+const json = {width: dimensions[0], height: dimensions[1], words: words, grid: puzzle}
+
+if (solve) {
+    const solution = WordFind.solve(puzzle, words);
+    json.solution = solve.found
+}
+
 console.log(JSON.stringify(json));
