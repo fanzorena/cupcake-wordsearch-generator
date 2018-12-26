@@ -94,7 +94,7 @@ while ((option = parser.getopt()) !== undefined) {
 addedArgs = addedArgs.filter((o) => o === 'f' || o === 'd' || o === 'c');
 if (addedArgs.length < 3) {
     console.error('Error: Required arguments missing');
-    console.log(usage());
+    console.error(usage());
     process.exit(1);
 }
 
@@ -108,6 +108,12 @@ const puzzle = WordFind.newPuzzle(words, {
     fillBlanks: true,
     orientations: (backwards) ? reverseOrientations : orientations
 });
+
+if (!puzzle) {
+    console.error("Couldn't generate puzzle with the supplied settings, try again or change the settings");
+    process.exit(1);
+}
+
 const json = {width: dimensions[0], height: dimensions[1], words: words, grid: puzzle}
 
 if (solve) {
