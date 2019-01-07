@@ -15,6 +15,7 @@ function usage() {
         '  -b, --backwards    generate words backwards',
         '  -c, --count        *required* quantity of words to include in the puzzle from the file',
         '  -d, --dimensions   *required* the dimensions of the puzzle, ex `-d 20`, `-d 10x8`',
+        '  -e, --extra        the hidden word of the level',
         '  -f, --file         *required* a line separated list of words to use',
         '  -h, --help         print this message and exit',
         '  -r, --rules        rules file for selecting the words to include in the puzzle',
@@ -35,7 +36,7 @@ function parseDimensions(dimensions) {
     return grid;
 }
 
-function parseFile(file, count, dimensions, rules) {
+function parseFile(file, count, dimensions, rules, hiddenWord) {
     const maxLength = Math.min(dimensions[0], dimensions[1]);
     let words = fs.readFileSync(file, 'utf-8').split('\r\n');
     words = R.filter((w) => w.length <= maxLength, words);
@@ -53,6 +54,7 @@ function parseFile(file, count, dimensions, rules) {
         }
         return set;
     } else {
+        words = R.filter((word) => word != hiddenWord, words);
         shuffleArray(words);
         return R.slice(0, count, words);
     }
@@ -62,6 +64,7 @@ const options = [
     'b(backwards)',
     'c:(count)',
     'd:(dimensions)',
+    'e:(extra)',
     'f:(file)',
     'h(help)',
     'r:(rules)',
@@ -76,6 +79,7 @@ let dimensions = [];
 let file;
 let rules;
 let addedArgs = [];
+let hiddenWord = '';
 
 while ((option = parser.getopt()) !== undefined) {
     addedArgs.push(option.option);
@@ -83,6 +87,7 @@ while ((option = parser.getopt()) !== undefined) {
         case 'b': backwards = true; break;
         case 'c': count = option.optarg; break;
         case 'd': dimensions = parseDimensions(option.optarg); break;
+        case 'e': hiddenWord = option.optarg; break;
         case 'f': file = option.optarg; break;
         case 'r': rules = option.optarg; break;
         case 's': solve = true; break;
@@ -101,7 +106,10 @@ if (addedArgs.length < 3) {
 const orientations = ['horizontal','vertical','diagonal','diagonalBack','diagonalUp'];
 const reverseOrientations = ['horizontalBack','verticalUp','diagonalUpBack'];
 
-const words = parseFile(file, count, dimensions, rules);
+const words = parseFile(file, count, dimensions, rules, hiddenWord);
+if (hiddenWord != '') {
+    words.push(hiddenWord);
+}
 const puzzle = WordFind.newPuzzle(words, {
     width: dimensions[0],
     height: dimensions[1],
@@ -115,6 +123,12 @@ if (!puzzle) {
 }
 
 const json = {width: dimensions[0], height: dimensions[1], words: words, grid: puzzle}
+
+if (hiddenWord != '') {
+    words.pop();
+    json.words = words;
+    json.hidden = hiddenWord;
+}
 
 if (solve) {
     const solution = WordFind.solve(puzzle, words);
